@@ -6,7 +6,6 @@ const statusIcon = document.getElementById('statusIcon');
 const statusText = document.getElementById('statusText');
 const captureBtn = document.getElementById('captureBtn');
 const exportBtn = document.getElementById('exportBtn');
-const debugBtn = document.getElementById('debugBtn');
 const statsSection = document.getElementById('statsSection');
 const tableSection = document.getElementById('tableSection');
 const emptyState = document.getElementById('emptyState');
@@ -20,6 +19,23 @@ const totalArticles = document.getElementById('totalArticles');
 const totalReads = document.getElementById('totalReads');
 const totalLikes = document.getElementById('totalLikes');
 const avgRead = document.getElementById('avgRead');
+const avgLikeRatio = document.getElementById('avgLikeRatio');
+const avgShareRatio = document.getElementById('avgShareRatio');
+
+// 本月数据统计元素
+const monthlyArticles = document.getElementById('monthlyArticles');
+const monthlyReads = document.getElementById('monthlyReads');
+const monthlyLikes = document.getElementById('monthlyLikes');
+const monthlyAvgRead = document.getElementById('monthlyAvgRead');
+const monthlyAvgLikeRatio = document.getElementById('monthlyAvgLikeRatio');
+const monthlyAvgShareRatio = document.getElementById('monthlyAvgShareRatio');
+
+// 最近10篇文章统计元素
+const top10Articles = document.getElementById('top10Articles');
+const top10AvgRead = document.getElementById('top10AvgRead');
+const top10AvgLike = document.getElementById('top10AvgLike');
+const top10LikeRatio = document.getElementById('top10LikeRatio');
+const top10ShareRatio = document.getElementById('top10ShareRatio');
 
 // 分页元素
 const tablePagination = document.getElementById('tablePagination');
@@ -62,7 +78,6 @@ async function initialize() {
 function bindEvents() {
     captureBtn.addEventListener('click', captureData);
     exportBtn.addEventListener('click', exportData);
-    debugBtn.addEventListener('click', debugData);
     clearDataBtn.addEventListener('click', clearAllData);
     refreshBtn.addEventListener('click', () => {
         updateStatus('checking', '刷新检测...');
@@ -71,6 +86,9 @@ function bindEvents() {
     
     prevPageBtn.addEventListener('click', () => changePage(currentPage - 1));
     nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
+    
+    // 绑定标签页切换事件
+    bindStatsTabEvents();
     
     // 监听标签页变化
     chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -121,13 +139,8 @@ async function captureData() {
         
         const result = await chrome.tabs.sendMessage(currentTab.id, { action: 'captureAllData' });
         
-        console.log('=== 数据抓取结果 ===');
-        console.log('抓取结果:', result);
-        
         if (result && result.data) {
-            console.log('开始处理数据...');
             const processedData = processWeixinData(result.data, token);
-            console.log('处理后的数据:', processedData);
             
             if (processedData.length > 0) {
                 await saveDataToStorage(processedData);
@@ -150,10 +163,6 @@ async function captureData() {
 
 // 处理微信数据
 function processWeixinData(rawData, token = null) {
-    console.log('=== 开始处理微信数据 ===');
-    console.log('原始数据结构:', rawData);
-    console.log('数据类型:', typeof rawData);
-    console.log('使用Token:', token);
     
     let publishList = [];
     
@@ -162,7 +171,6 @@ function processWeixinData(rawData, token = null) {
         publishList = rawData.publish_list;
     } else if (rawData.cgiData && rawData.cgiData.publish_list) {
         publishList = rawData.cgiData.publish_list;
-        console.log('从rawData.cgiData.publish_list获取数据，长度:', publishList.length);
     } else if (typeof rawData === 'string') {
         try {
             const parsed = JSON.parse(rawData);
@@ -177,21 +185,15 @@ function processWeixinData(rawData, token = null) {
     
     publishList.forEach((item, index) => {
         try {
-            console.log(`处理第${index}个item:`, item);
-            
             // 处理可能的HTML转义数据
             let processedItem = item;
             if (item.publish_info && typeof item.publish_info === 'string') {
-                console.log('发现publish_info字符串，开始解码...');
                 // 解码HTML实体
                 const decodedInfo = decodeHtmlEntities(item.publish_info);
-                console.log('解码后的信息长度:', decodedInfo.length);
                 try {
                     processedItem = JSON.parse(decodedInfo);
-                    console.log('解析后的processedItem:', processedItem);
                 } catch (e) {
                     console.error('解析publish_info失败:', e);
-                    console.log('失败的内容:', decodedInfo.substring(0, 200));
                     processedItem = item;
                 }
             }
@@ -206,14 +208,6 @@ function processWeixinData(rawData, token = null) {
             const appmsgList = processedItem.appmsg_info || [];
             
             appmsgList.forEach((appmsg, appmsgIndex) => {
-                console.log(`处理appmsg ${appmsgIndex}:`, appmsg);
-                console.log('关键字段提取:', {
-                    appmsgid: appmsg.appmsgid,
-                    itemidx: appmsg.itemidx,
-                    publishDate_from_view: processedItem.view?.publishDate,
-                    publishDate_from_time: sentInfo.time ? formatDateForUrl(sentInfo.time) : null,
-                    sent_info_time: sentInfo.time
-                });
                 
                 const record = {
                     id: `${processedItem.msgid || index}_${appmsgIndex}`,
@@ -298,7 +292,6 @@ function processWeixinData(rawData, token = null) {
         }
     });
     
-    console.log('处理后的数据:', processedData);
     return processedData;
 }
 
@@ -380,8 +373,6 @@ async function saveDataToStorage(data) {
         
         mergedData.sort((a, b) => new Date(b.captureTime) - new Date(a.captureTime));
         await chrome.storage.local.set({ [STORAGE_KEY]: mergedData });
-        
-        console.log('数据已保存到本地存储:', mergedData.length, '条记录');
     } catch (error) {
         console.error('保存数据失败:', error);
         throw error;
@@ -436,21 +427,171 @@ function showEmptyView() {
 
 // 更新统计信息
 function updateStatistics(data) {
+    // 全部数据统计
     const stats = {
         totalArticles: data.length,
         totalReads: data.reduce((sum, item) => sum + item.readNum, 0),
         totalLikes: data.reduce((sum, item) => sum + item.likeNum, 0),
-        avgRead: 0
+        totalShares: data.reduce((sum, item) => sum + item.shareNum, 0),
+        avgRead: 0,
+        avgLikeRatio: 0,
+        avgShareRatio: 0
     };
     
     if (stats.totalArticles > 0) {
         stats.avgRead = Math.round(stats.totalReads / stats.totalArticles);
+        
+        // 计算平均赞阅比
+        const totalLikeRatio = data.reduce((sum, item) => sum + parseFloat(item.likeReadRatio || 0), 0);
+        stats.avgLikeRatio = (totalLikeRatio / stats.totalArticles).toFixed(2);
+        
+        // 计算平均转发阅读比
+        const totalShareRatio = data.reduce((sum, item) => sum + parseFloat(item.shareReadRatio || 0), 0);
+        stats.avgShareRatio = (totalShareRatio / stats.totalArticles).toFixed(2);
     }
     
     totalArticles.textContent = stats.totalArticles.toLocaleString();
     totalReads.textContent = stats.totalReads.toLocaleString();
     totalLikes.textContent = stats.totalLikes.toLocaleString();
     avgRead.textContent = stats.avgRead.toLocaleString();
+    avgLikeRatio.textContent = stats.avgLikeRatio + '%';
+    avgShareRatio.textContent = stats.avgShareRatio + '%';
+    
+    // 本月数据统计
+    const monthlyStats = calculateMonthlyStats(data);
+    updateMonthlyDisplay(monthlyStats);
+    
+    // 最近10篇文章统计（去掉最高最低）
+    const top10Stats = calculateTop10Stats(data);
+    updateTop10Display(top10Stats);
+}
+
+// 计算本月数据统计
+function calculateMonthlyStats(data) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    // 筛选本月数据
+    const monthlyData = data.filter(item => {
+        if (!item.publishTimestamp) return false;
+        
+        const publishDate = new Date(item.publishTimestamp * 1000);
+        return publishDate.getFullYear() === currentYear && 
+               publishDate.getMonth() === currentMonth;
+    });
+    
+    const stats = {
+        totalArticles: monthlyData.length,
+        totalReads: monthlyData.reduce((sum, item) => sum + item.readNum, 0),
+        totalLikes: monthlyData.reduce((sum, item) => sum + item.likeNum, 0),
+        avgRead: 0,
+        avgLikeRatio: 0,
+        avgShareRatio: 0
+    };
+    
+    if (stats.totalArticles > 0) {
+        stats.avgRead = Math.round(stats.totalReads / stats.totalArticles);
+        
+        // 计算本月平均赞阅比
+        const totalLikeRatio = monthlyData.reduce((sum, item) => sum + parseFloat(item.likeReadRatio || 0), 0);
+        stats.avgLikeRatio = (totalLikeRatio / stats.totalArticles).toFixed(2);
+        
+        // 计算本月平均转发阅读比
+        const totalShareRatio = monthlyData.reduce((sum, item) => sum + parseFloat(item.shareReadRatio || 0), 0);
+        stats.avgShareRatio = (totalShareRatio / stats.totalArticles).toFixed(2);
+    }
+    
+    return stats;
+}
+
+// 更新本月数据显示
+function updateMonthlyDisplay(stats) {
+    monthlyArticles.textContent = stats.totalArticles.toLocaleString();
+    monthlyReads.textContent = stats.totalReads.toLocaleString();
+    monthlyLikes.textContent = stats.totalLikes.toLocaleString();
+    monthlyAvgRead.textContent = stats.avgRead.toLocaleString();
+    monthlyAvgLikeRatio.textContent = stats.avgLikeRatio + '%';
+    monthlyAvgShareRatio.textContent = stats.avgShareRatio + '%';
+}
+
+// 计算最近10篇文章统计（去掉最高最低阅读量）
+function calculateTop10Stats(data) {
+    // 按发布时间排序，取最近10篇
+    const sortedData = [...data].sort((a, b) => {
+        const timeA = a.publishTimestamp || 0;
+        const timeB = b.publishTimestamp || 0;
+        return timeB - timeA; // 降序排列，最新的在前
+    });
+    
+    const recentArticles = sortedData.slice(0, 10);
+    
+    // 如果文章数少于3篇，无法去掉最高最低
+    if (recentArticles.length < 3) {
+        return {
+            validArticles: recentArticles.length,
+            avgRead: recentArticles.length > 0 ? 
+                Math.round(recentArticles.reduce((sum, item) => sum + item.readNum, 0) / recentArticles.length) : 0,
+            avgLike: recentArticles.length > 0 ? 
+                Math.round(recentArticles.reduce((sum, item) => sum + item.likeNum, 0) / recentArticles.length) : 0,
+            avgLikeRatio: recentArticles.length > 0 ? 
+                (recentArticles.reduce((sum, item) => sum + parseFloat(item.likeReadRatio || 0), 0) / recentArticles.length).toFixed(2) : '0.00',
+            avgShareRatio: recentArticles.length > 0 ? 
+                (recentArticles.reduce((sum, item) => sum + parseFloat(item.shareReadRatio || 0), 0) / recentArticles.length).toFixed(2) : '0.00'
+        };
+    }
+    
+    // 按阅读量排序
+    const sortedByReads = [...recentArticles].sort((a, b) => a.readNum - b.readNum);
+    
+    // 去掉最高和最低阅读量的文章
+    const filteredArticles = sortedByReads.slice(1, -1);
+    
+    const stats = {
+        validArticles: filteredArticles.length,
+        avgRead: filteredArticles.length > 0 ? 
+            Math.round(filteredArticles.reduce((sum, item) => sum + item.readNum, 0) / filteredArticles.length) : 0,
+        avgLike: filteredArticles.length > 0 ? 
+            Math.round(filteredArticles.reduce((sum, item) => sum + item.likeNum, 0) / filteredArticles.length) : 0,
+        avgLikeRatio: filteredArticles.length > 0 ? 
+            (filteredArticles.reduce((sum, item) => sum + parseFloat(item.likeReadRatio || 0), 0) / filteredArticles.length).toFixed(2) : '0.00',
+        avgShareRatio: filteredArticles.length > 0 ? 
+            (filteredArticles.reduce((sum, item) => sum + parseFloat(item.shareReadRatio || 0), 0) / filteredArticles.length).toFixed(2) : '0.00'
+    };
+    
+    return stats;
+}
+
+// 更新最近10篇文章统计显示
+function updateTop10Display(stats) {
+    top10Articles.textContent = stats.validArticles.toLocaleString();
+    top10AvgRead.textContent = stats.avgRead.toLocaleString();
+    top10AvgLike.textContent = stats.avgLike.toLocaleString();
+    top10LikeRatio.textContent = stats.avgLikeRatio + '%';
+    top10ShareRatio.textContent = stats.avgShareRatio + '%';
+}
+
+// 绑定统计标签页事件
+function bindStatsTabEvents() {
+    const statsTabs = document.querySelectorAll('.stats-tab');
+    const statsTabContents = document.querySelectorAll('.stats-tab-content');
+    
+    statsTabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            const targetTab = e.target.dataset.tab;
+            
+            // 移除所有活动状态
+            statsTabs.forEach(t => t.classList.remove('active'));
+            statsTabContents.forEach(content => content.classList.remove('active'));
+            
+            // 激活当前标签页
+            e.target.classList.add('active');
+            const targetContent = document.getElementById(targetTab + 'Stats');
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
 }
 
 // 渲染表格
@@ -543,51 +684,7 @@ async function clearAllData() {
     }
 }
 
-// 调试数据
-async function debugData() {
-    try {
-        updateStatus('checking', '调试数据中...');
-        
-        // 获取存储的数据
-        const storedData = await getStoredData();
-        console.log('=== 调试信息 ===');
-        console.log('存储的数据数量:', storedData.length);
-        console.log('存储的完整数据:', storedData);
-        
-        if (storedData.length > 0) {
-            const firstRecord = storedData[0];
-            console.log('第一条记录详情:', firstRecord);
-            console.log('必要参数检查:', {
-                appmsgid: firstRecord.appmsgid,
-                publishDate: firstRecord.publishDate,
-                publishTimestamp: firstRecord.publishTimestamp,
-                token: firstRecord.token,
-                itemidx: firstRecord.itemidx,
-                msgid: firstRecord.msgid
-            });
-            
-            // 尝试构造URL
-            const testUrl = constructDetailPageUrl(firstRecord);
-            console.log('测试构造URL结果:', testUrl);
-            
-            updateStatus('ready', `调试完成 - 检查控制台输出`);
-        } else {
-            updateStatus('error', '没有数据可调试');
-        }
-        
-        // 也从当前页面获取token
-        try {
-            const tokenResult = await chrome.tabs.sendMessage(currentTab.id, { action: 'getToken' });
-            console.log('从页面获取的token:', tokenResult);
-        } catch (error) {
-            console.log('获取页面token失败:', error);
-        }
-        
-    } catch (error) {
-        console.error('调试失败:', error);
-        updateStatus('error', '调试失败: ' + error.message);
-    }
-}
+
 
 // 导出数据
 async function exportData() {
@@ -665,9 +762,7 @@ function convertToCSV(data) {
 // 绑定数据详情按钮事件
 function bindDetailButtons() {
     const detailBtns = document.querySelectorAll('.detail-btn');
-    console.log('绑定数据详情按钮，找到按钮数量:', detailBtns.length);
     detailBtns.forEach((btn, index) => {
-        console.log(`绑定按钮 ${index}:`, btn);
         btn.addEventListener('click', handleViewDetail);
     });
 }
@@ -677,26 +772,14 @@ async function handleViewDetail(event) {
     const btn = event.currentTarget;
     
     try {
-        console.log('=== 点击数据详情按钮 ===');
-        console.log('按钮dataset:', btn.dataset);
-        
         const recordData = JSON.parse(btn.dataset.record);
-        console.log('解析的记录数据:', recordData);
-        console.log('记录数据的关键字段:', {
-            appmsgid: recordData.appmsgid,
-            publishDate: recordData.publishDate,
-            token: recordData.token,
-            itemidx: recordData.itemidx
-        });
         
         // 如果没有token，先从当前页面获取
         if (!recordData.token) {
-            console.log('数据中没有token，尝试从当前页面获取...');
             try {
                 const tokenResult = await chrome.tabs.sendMessage(currentTab.id, { action: 'getToken' });
                 if (tokenResult && tokenResult.token) {
                     recordData.token = tokenResult.token;
-                    console.log('从页面获取到token:', tokenResult.token);
                 }
             } catch (error) {
                 console.warn('从页面获取token失败:', error);
@@ -733,14 +816,6 @@ async function handleViewDetail(event) {
 // 构造数据详情页面URL
 function constructDetailPageUrl(record) {
     try {
-        console.log('构造详情页面URL，输入数据:', {
-            appmsgid: record.appmsgid,
-            publishDate: record.publishDate,
-            publishTimestamp: record.publishTimestamp,
-            token: record.token,
-            itemidx: record.itemidx,
-            msgid: record.msgid
-        });
         
         // 从多个来源获取必要参数
         let appmsgid = record.appmsgid;
@@ -750,16 +825,13 @@ function constructDetailPageUrl(record) {
         
         // 如果没有appmsgid，尝试从其他字段获取
         if (!appmsgid) {
-            console.log('尝试从其他字段获取appmsgid...');
             appmsgid = record.msgid || 
                       (record.rawData?.appmsgInfo?.appmsgid) ||
                       (record.rawData?.appmsgInfo?.id) || 0;
-            console.log('备用appmsgid:', appmsgid);
         }
         
         // 如果没有publishDate，尝试从多个来源生成
         if (!publishDate) {
-            console.log('尝试从其他字段获取publishDate...');
             if (record.publishTimestamp) {
                 publishDate = formatDateForUrl(record.publishTimestamp);
             } else if (record.rawData?.publishItem?.view?.publishDate) {
@@ -767,16 +839,12 @@ function constructDetailPageUrl(record) {
             } else if (record.rawData?.sentInfo?.time) {
                 publishDate = formatDateForUrl(record.rawData.sentInfo.time);
             }
-            console.log('备用publishDate:', publishDate);
         }
         
         // 如果没有token，尝试从当前页面获取
         if (!token) {
-            // 从当前标签页获取token - 需要通过content script
             console.warn('缺少token，尝试从页面获取...');
         }
-        
-        console.log('最终参数:', { appmsgid, publishDate, token, itemidx });
         
         const missingParams = [];
         if (!appmsgid) missingParams.push('appmsgid');
@@ -795,7 +863,6 @@ function constructDetailPageUrl(record) {
         // 构造完整的数据详情页面URL
         const detailUrl = `https://mp.weixin.qq.com/misc/appmsganalysis?action=detailpage&msgid=${msgidParam}&publish_date=${publishDate}&type=int&token=${token}&lang=zh_CN`;
         
-        console.log('构造的详情页面URL:', detailUrl);
         return detailUrl;
         
     } catch (error) {
@@ -853,7 +920,6 @@ async function updateStoredRecord(msgid, newData) {
         });
         
         await chrome.storage.local.set({ [STORAGE_KEY]: updatedData });
-        console.log('记录已更新:', msgid);
     } catch (error) {
         console.error('更新记录失败:', error);
         throw error;
@@ -866,5 +932,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         loadStoredData();
     }
 });
-
-console.log('微信数据抓取工具已初始化');

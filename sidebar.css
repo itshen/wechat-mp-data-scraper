@@ -197,10 +197,72 @@ body {
     margin-bottom: var(--spacing-md);
 }
 
+.stats-subtitle {
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-500);
+    margin-bottom: var(--spacing-md);
+    margin-top: -0.5rem;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-md);
+}
+
+.stats-grid-expanded {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.stats-grid-top10 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 600px) {
+    .stats-grid-top10 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* 标签页样式 */
+.stats-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-gray-200);
+    margin-bottom: var(--spacing-lg);
+    gap: 0;
+}
+
+.stats-tab {
+    background: none;
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-gray-500);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    flex: 1;
+    text-align: center;
+}
+
+.stats-tab:hover {
+    color: var(--color-gray-700);
+    background-color: var(--color-gray-50);
+}
+
+.stats-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background-color: var(--color-gray-50);
+}
+
+.stats-tab-content {
+    display: none;
+}
+
+.stats-tab-content.active {
+    display: block;
 }
 
 .stat-card {
@@ -495,6 +557,19 @@ body {
 @media (max-width: 400px) {
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .stats-grid-expanded {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid-top10 {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-tab {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
     }
     
     .action-buttons {

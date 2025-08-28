@@ -45,36 +45,104 @@
                         </svg>
                         导出CSV
                     </button>
-                    
-                    <button class="btn btn-secondary" id="debugBtn">
-                        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="m12 1 0 6m6 5 6 0m-6 6 0 6m-6-5-6 0"/>
-                        </svg>
-                        调试数据
-                    </button>
                 </div>
             </section>
 
             <!-- 统计概览 -->
             <section class="stats-section" id="statsSection" style="display: none;">
                 <h3 class="section-title">数据概览</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalArticles">0</div>
-                        <div class="stat-label">文章总数</div>
+                
+                <!-- 标签页导航 -->
+                <div class="stats-tabs">
+                    <button class="stats-tab active" data-tab="overall">总体数据</button>
+                    <button class="stats-tab" data-tab="monthly">本月数据</button>
+                    <button class="stats-tab" data-tab="top10">最近10篇</button>
+                </div>
+
+                <!-- 总体数据标签页 -->
+                <div class="stats-tab-content active" id="overallStats">
+                    <div class="stats-grid stats-grid-expanded">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalArticles">0</div>
+                            <div class="stat-label">文章总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalReads">0</div>
+                            <div class="stat-label">总阅读量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalLikes">0</div>
+                            <div class="stat-label">总点赞数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgRead">0</div>
+                            <div class="stat-label">平均阅读</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgLikeRatio">0%</div>
+                            <div class="stat-label">平均赞阅比</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgShareRatio">0%</div>
+                            <div class="stat-label">平均转发阅读比</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalReads">0</div>
-                        <div class="stat-label">总阅读量</div>
+                </div>
+
+                <!-- 本月数据标签页 -->
+                <div class="stats-tab-content" id="monthlyStats">
+                    <div class="stats-grid stats-grid-expanded">
+                        <div class="stat-card">
+                            <div class="stat-value" id="monthlyArticles">0</div>
+                            <div class="stat-label">本月文章数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="monthlyReads">0</div>
+                            <div class="stat-label">本月阅读量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="monthlyLikes">0</div>
+                            <div class="stat-label">本月点赞数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="monthlyAvgRead">0</div>
+                            <div class="stat-label">本月平均阅读</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="monthlyAvgLikeRatio">0%</div>
+                            <div class="stat-label">本月平均赞阅比</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="monthlyAvgShareRatio">0%</div>
+                            <div class="stat-label">本月平均转发阅读比</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalLikes">0</div>
-                        <div class="stat-label">总点赞数</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="avgRead">0</div>
-                        <div class="stat-label">平均阅读</div>
+                </div>
+
+                <!-- 最近10篇文章标签页 -->
+                <div class="stats-tab-content" id="top10Stats">
+                    <p class="stats-subtitle">（去掉最高最低阅读量后的统计）</p>
+                    <div class="stats-grid stats-grid-top10">
+                        <div class="stat-card">
+                            <div class="stat-value" id="top10Articles">0</div>
+                            <div class="stat-label">参与统计文章数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="top10AvgRead">0</div>
+                            <div class="stat-label">平均阅读量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="top10AvgLike">0</div>
+                            <div class="stat-label">平均点赞数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="top10LikeRatio">0%</div>
+                            <div class="stat-label">平均赞阅比</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="top10ShareRatio">0%</div>
+                            <div class="stat-label">平均转发阅读比</div>
+                        </div>
                     </div>
                 </div>
             </section>

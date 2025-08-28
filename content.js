@@ -6,48 +6,37 @@ let wxData = null;
 
 // 初始化
 function init() {
-    console.log('微信公众号数据抓取工具已加载');
-    
     // 等待页面数据加载
     const checkInterval = setInterval(() => {
         if (checkWxData()) {
             clearInterval(checkInterval);
             isReady = true;
-            console.log('检测到微信数据');
         }
     }, 1000);
     
     // 10秒后停止检查
     setTimeout(() => {
         clearInterval(checkInterval);
-        if (!isReady) {
-            console.log('未检测到微信数据，可能不在正确的页面');
-        }
     }, 10000);
 }
 
 // 检查是否存在微信数据
 function checkWxData() {
     try {
-        console.log('检查页面数据结构...');
-        
         // 检查 window.wx.cgiData
         if (window.wx && window.wx.cgiData) {
-            console.log('找到 window.wx.cgiData:', window.wx.cgiData);
             wxData = window.wx.cgiData;
             return true;
         }
         
         // 检查 window.cgiData
         if (window.cgiData) {
-            console.log('找到 window.cgiData:', window.cgiData);
             wxData = window.cgiData;
             return true;
         }
         
         // 检查页面上的其他可能数据源
         if (window.__INITIAL_STATE__) {
-            console.log('找到 window.__INITIAL_STATE__:', window.__INITIAL_STATE__);
             wxData = window.__INITIAL_STATE__;
             return true;
         }
@@ -57,37 +46,24 @@ function checkWxData() {
         for (let script of scripts) {
             const content = script.textContent || '';
             if (content.includes('publish_list') || content.includes('appmsg_info') || content.includes('share_imageinfo')) {
-                console.log('在script标签中找到相关数据');
                 try {
                     // 尝试提取JSON数据
                     const matches = content.match(/({.*publish_list.*})/);
-                    console.log('JSON匹配结果:', matches ? '找到匹配' : '未找到匹配');
                     if (matches) {
-                        console.log('尝试解析JSON，长度:', matches[1].length);
                         wxData = JSON.parse(matches[1]);
-                        console.log('wxData设置成功:', wxData);
-                        console.log('wxData.publish_list长度:', wxData.publish_list ? wxData.publish_list.length : '不存在');
                         return true;
                     }
                 } catch (e) {
-                    console.log('解析script数据失败:', e);
-                    console.log('失败的JSON片段前200字符:', matches ? matches[1].substring(0, 200) : 'N/A');
+                    // 解析失败，继续尝试其他方式
                 }
             }
         }
-        
-        // 检查所有全局变量
-        console.log('检查全局变量...');
-        console.log('window.wx:', window.wx);
-        console.log('当前页面URL:', window.location.href);
-        console.log('页面标题:', document.title);
         
         // 检查页面中的表格数据或列表
         const tables = document.querySelectorAll('table');
         const lists = document.querySelectorAll('[class*="list"], [class*="item"]');
         
         if (tables.length > 0 || lists.length > 0) {
-            console.log(`找到 ${tables.length} 个表格, ${lists.length} 个列表元素`);
             
             // 尝试从DOM中提取数据
             const extractedData = extractDataFromDOM();
@@ -99,7 +75,6 @@ function checkWxData() {
         
         // 检查是否是特定的发布页面
         if (window.location.href.includes('appmsgpublish')) {
-            console.log('当前在发布管理页面，尝试等待数据加载...');
             // 对于发布页面，可能需要等待数据加载
             return false; // 暂时返回false，让定时器继续检查
         }
@@ -126,7 +101,6 @@ function captureCurrentPageData() {
             pageUrl: window.location.href
         };
         
-        console.log('当前页数据抓取成功:', currentData);
         return currentData;
         
     } catch (error) {
@@ -138,17 +112,13 @@ function captureCurrentPageData() {
 // 抓取全部数据
 function captureAllData() {
     try {
-        console.log('=== captureAllData 开始执行 ===');
         const dataCheck = checkWxData();
-        console.log('checkWxData 结果:', dataCheck);
         
         if (!dataCheck) {
-            console.error('未找到微信数据，抛出错误');
             throw new Error('未找到微信数据');
         }
         
         // 获取所有可用的数据
-        console.log('准备构造返回数据，wxData:', wxData);
         const allData = {
             cgiData: wxData,
             pageInfo: {
@@ -158,7 +128,6 @@ function captureAllData() {
             },
             captureType: 'all_data'
         };
-        console.log('构造的allData:', allData);
         
         // 尝试获取页面上的其他相关数据
         try {
@@ -175,11 +144,9 @@ function captureAllData() {
                 };
             }
         } catch (e) {
-            console.log('获取额外数据时出错，继续使用基础数据:', e);
+            // 获取额外数据时出错，继续使用基础数据
         }
         
-        console.log('全部数据抓取成功，准备返回:', allData);
-        console.log('返回数据的publish_list:', allData.cgiData?.publish_list);
         return allData;
         
     } catch (error) {
@@ -190,7 +157,6 @@ function captureAllData() {
 
 // 监听来自popup的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('收到消息:', request);
     
     try {
         switch (request.action) {
@@ -252,7 +218,6 @@ function watchDataChanges() {
             const currentDataStr = JSON.stringify(wxData);
             if (currentDataStr !== lastDataStr) {
                 lastDataStr = currentDataStr;
-                console.log('检测到数据更新');
                 
                 // 可以在这里发送通知给background script
                 sendDataToBackground(wxData, 'auto_detected');
@@ -313,13 +278,10 @@ function formatDataForExport(data, type = 'json') {
 // 从DOM中提取数据
 function extractDataFromDOM() {
     try {
-        console.log('尝试从DOM中提取数据...');
-        
         // 检查是否有文章列表
         const articleElements = document.querySelectorAll('[class*="article"], [class*="msg"], [class*="item"]');
         
         if (articleElements.length === 0) {
-            console.log('未找到文章元素');
             return null;
         }
         
@@ -368,11 +330,10 @@ function extractDataFromDOM() {
                 
                 extractedData.publish_list.push(article);
             } catch (e) {
-                console.log('提取文章数据失败:', e);
+                // 提取失败，跳过该文章
             }
         });
         
-        console.log('从DOM提取的数据:', extractedData);
         return extractedData;
         
     } catch (error) {
@@ -401,7 +362,6 @@ setTimeout(watchDataChanges, 3000);
 // 抓取数据页面信息
 function captureDataPageInfo(msgid) {
     try {
-        console.log('抓取数据页面信息，msgid:', msgid);
         
         // 检查是否在数据页面
         if (!window.location.href.includes('mp.weixin.qq.com')) {
@@ -426,8 +386,6 @@ function captureDataPageInfo(msgid) {
             ].join(','));
             
             if (dataElements.length > 0) {
-                console.log('找到数据元素:', dataElements);
-                
                 // 提取数据
                 const extractedData = extractDataFromPage();
                 return extractedData;
@@ -464,21 +422,18 @@ function extractDataFromPage() {
         
         // 查找阅读量、点赞数等统计数据
         const numberElements = document.querySelectorAll('[class*="number"], [class*="count"], [class*="stat"]');
+        // 处理数字元素和统计按钮
         numberElements.forEach((element, index) => {
             const text = element.textContent || element.innerText;
             const numbers = text.match(/[\d,]+/g);
-            if (numbers && numbers.length > 0) {
-                console.log(`数据元素 ${index}:`, text, '提取数字:', numbers);
-            }
+            // 这里可以添加数据处理逻辑
         });
         
         // 查找包含统计图标的按钮
         const statButtons = document.querySelectorAll('.weui-desktop-mass-media__opr__meta button');
         statButtons.forEach((button, index) => {
             const tooltip = button.querySelector('.weui-desktop-tooltip');
-            if (tooltip) {
-                console.log(`统计按钮 ${index}:`, tooltip.textContent);
-            }
+            // 这里可以添加按钮处理逻辑
         });
         
         // 临时返回基础页面信息，等待您提供具体的数据抓取逻辑
@@ -493,19 +448,15 @@ function extractDataFromPage() {
 // 从页面获取token
 function getTokenFromPage() {
     try {
-        console.log('从页面获取token...');
-        
         // 方法1: 从URL参数中获取
         const urlParams = new URLSearchParams(window.location.search);
         const urlToken = urlParams.get('token');
         if (urlToken) {
-            console.log('从URL获取到token:', urlToken);
             return urlToken;
         }
         
         // 方法2: 从全局变量中获取
         if (window.wx && window.wx.data && window.wx.data.token) {
-            console.log('从wx.data获取到token:', window.wx.data.token);
             return window.wx.data.token;
         }
         
@@ -518,7 +469,6 @@ function getTokenFromPage() {
                               content.match(/['"]*token['"]*['"]*(\d+)['"]*/) ||
                               content.match(/token.*?(\d{8,})/);
             if (tokenMatch && tokenMatch[1]) {
-                console.log('从script标签获取到token:', tokenMatch[1]);
                 return tokenMatch[1];
             }
         }
@@ -528,12 +478,10 @@ function getTokenFromPage() {
         for (let element of elements) {
             const token = element.dataset.token;
             if (token) {
-                console.log('从元素data属性获取到token:', token);
                 return token;
             }
         }
         
-        console.log('未找到token');
         return null;
         
     } catch (error) {
