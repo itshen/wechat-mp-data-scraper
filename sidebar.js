@@ -90,6 +90,38 @@ function bindEvents() {
     // 绑定标签页切换事件
     bindStatsTabEvents();
     
+    // 绑定反馈问题按钮事件（显示模态框）
+    const feedbackBtn = document.getElementById('feedbackBtn');
+    const aboutModal = document.getElementById('aboutModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalOverlay = aboutModal?.querySelector('.modal-overlay');
+    
+    if (feedbackBtn && aboutModal) {
+        feedbackBtn.addEventListener('click', () => {
+            aboutModal.style.display = 'flex';
+        });
+    }
+    
+    if (closeModalBtn && aboutModal) {
+        closeModalBtn.addEventListener('click', () => {
+            aboutModal.style.display = 'none';
+        });
+    }
+    
+    // 点击遮罩层关闭模态框
+    if (modalOverlay && aboutModal) {
+        modalOverlay.addEventListener('click', () => {
+            aboutModal.style.display = 'none';
+        });
+    }
+    
+    // ESC键关闭模态框
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && aboutModal && aboutModal.style.display === 'flex') {
+            aboutModal.style.display = 'none';
+        }
+    });
+    
     // 监听标签页变化
     chrome.tabs.onActivated.addListener(async (activeInfo) => {
         currentTab = await chrome.tabs.get(activeInfo.tabId);

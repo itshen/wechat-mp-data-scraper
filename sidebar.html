@@ -216,15 +216,128 @@
                 <h3 class="empty-title">暂无数据</h3>
                 <p class="empty-desc">请在微信公众号后台页面抓取数据</p>
             </div>
+
+
         </main>
 
         <!-- 简约底部 -->
         <footer class="footer">
             <div class="footer-content">
                 <span class="footer-text">数据存储在本地浏览器</span>
-                <span class="footer-version">v1.0</span>
+                <span class="footer-version" id="feedbackBtn" style="cursor: pointer; color: #3b82f6; text-decoration: underline;">反馈问题 v1.0</span>
             </div>
         </footer>
+    </div>
+
+    <!-- 关于模态框 -->
+    <div id="aboutModal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">关于工具</h3>
+                <button id="closeModalBtn" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 作者介绍 -->
+                <div class="about-section">
+                    <div class="about-intro">
+                        <div class="about-icon">👋</div>
+                        <h5 class="about-title">嗨，我是洛小山</h5>
+                        <p class="about-desc">白天是个爱折腾的 AI 产品经理，晚上是个快乐的小开发~</p>
+                    </div>
+                </div>
+
+                <!-- 工具介绍 -->
+                <div class="about-section">
+                    <h5 class="section-title">
+                        <span class="section-icon">🚀</span>
+                        微信公众号数据抓取工具
+                    </h5>
+                    <p class="section-desc">
+                        一个功能完整、安全可靠的微信公众号数据抓取和分析工具，支持文章数据采集、统计分析和CSV导出功能。
+                    </p>
+                    <div class="features-grid">
+                        <div class="feature-item">
+                            <span class="feature-icon">📊</span>
+                            <span>数据统计分析</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">📈</span>
+                            <span>实时数据监控</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">💾</span>
+                            <span>本地数据存储</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">📁</span>
+                            <span>CSV数据导出</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🛡️</span>
+                            <span>安全数据处理</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎨</span>
+                            <span>简洁现代界面</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 快速使用指南 -->
+                <div class="about-section">
+                    <h5 class="section-title">
+                        <span class="section-icon">⚙️</span>
+                        快速使用指南
+                    </h5>
+                    <p class="section-desc">在微信公众号后台按以下步骤使用：</p>
+                    <div class="usage-steps">
+                        <div class="step-item">
+                            <span class="step-number">1</span>
+                            <span>登录微信公众号后台</span>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-number">2</span>
+                            <span>进入"图文消息"或"素材管理"页面</span>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-number">3</span>
+                            <span>点击工具的"抓取数据"按钮</span>
+                        </div>
+                        <div class="step-item">
+                            <span class="step-number">4</span>
+                            <span>查看统计数据并导出CSV</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 主要功能 -->
+                <div class="about-section">
+                    <h5 class="section-title">
+                        <span class="section-icon">✨</span>
+                        主要功能
+                    </h5>
+                    <div class="function-list">
+                        <div class="function-item">
+                            <span class="function-icon">📊</span>
+                            <span>抓取微信公众号文章的阅读量、点赞数、评论数等数据</span>
+                        </div>
+                        <div class="function-item">
+                            <span class="function-icon">📈</span>
+                            <span>提供总体数据、本月数据和最近10篇文章的统计分析</span>
+                        </div>
+                        <div class="function-item">
+                            <span class="function-icon">💾</span>
+                            <span>数据安全存储在本地浏览器，保护隐私</span>
+                        </div>
+                        <div class="function-item">
+                            <span class="function-icon">📁</span>
+                            <span>支持将数据导出为CSV格式，便于进一步分析</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="sidebar.js"></script>
