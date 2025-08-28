@@ -333,6 +333,77 @@ body {
     z-index: 10;
 }
 
+.data-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    position: relative;
+    padding-right: 24px;
+}
+
+.data-table th.sortable:hover {
+    background: var(--color-gray-100);
+    color: var(--color-gray-800);
+}
+
+.data-table th.sortable.sorted-asc {
+    background: var(--color-primary);
+    color: white;
+}
+
+.data-table th.sortable.sorted-desc {
+    background: var(--color-primary);
+    color: white;
+}
+
+.sort-indicator {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.data-table th.sortable:hover .sort-indicator {
+    opacity: 0.8;
+}
+
+.data-table th.sortable.sorted-asc .sort-indicator,
+.data-table th.sortable.sorted-desc .sort-indicator {
+    opacity: 1;
+}
+
+.sort-icon {
+    width: 12px;
+    height: 12px;
+    color: currentColor;
+}
+
+.data-table th.sortable.sorted-asc .sort-icon path:first-child {
+    stroke: currentColor;
+    stroke-width: 3;
+}
+
+.data-table th.sortable.sorted-asc .sort-icon path:last-child {
+    stroke: currentColor;
+    stroke-width: 1;
+    opacity: 0.3;
+}
+
+.data-table th.sortable.sorted-desc .sort-icon path:first-child {
+    stroke: currentColor;
+    stroke-width: 1;
+    opacity: 0.3;
+}
+
+.data-table th.sortable.sorted-desc .sort-icon path:last-child {
+    stroke: currentColor;
+    stroke-width: 3;
+}
+
 
 
 .data-table td {

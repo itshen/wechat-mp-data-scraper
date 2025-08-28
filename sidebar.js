@@ -45,9 +45,16 @@ const nextPageBtn = document.getElementById('nextPageBtn');
 
 // 数据存储
 let currentData = [];
+let originalData = []; // 保存原始数据顺序
 let currentPage = 1;
 const pageSize = 20;
 let currentTab = null;
+
+// 排序状态
+let currentSort = {
+    column: null,
+    direction: null // 'asc' 或 'desc'
+};
 
 // 本地存储键名
 const STORAGE_KEY = 'wx_publish_data';
@@ -89,6 +96,9 @@ function bindEvents() {
     
     // 绑定标签页切换事件
     bindStatsTabEvents();
+    
+    // 绑定排序事件
+    bindSortEvents();
     
     // 绑定反馈问题按钮事件（显示模态框）
     const feedbackBtn = document.getElementById('feedbackBtn');
@@ -426,7 +436,14 @@ async function getStoredData() {
 async function loadStoredData() {
     try {
         const data = await getStoredData();
-        currentData = data;
+        originalData = [...data]; // 保存原始数据
+        currentData = [...data];  // 当前显示的数据
+        
+        // 重置排序状态和分页
+        currentSort.column = null;
+        currentSort.direction = null;
+        currentPage = 1;
+        updateSortIndicators();
         
         if (data.length > 0) {
             showDataView();
@@ -473,11 +490,11 @@ function updateStatistics(data) {
     if (stats.totalArticles > 0) {
         stats.avgRead = Math.round(stats.totalReads / stats.totalArticles);
         
-        // 计算平均赞阅比
+        // 计算平均点赞率
         const totalLikeRatio = data.reduce((sum, item) => sum + parseFloat(item.likeReadRatio || 0), 0);
         stats.avgLikeRatio = (totalLikeRatio / stats.totalArticles).toFixed(2);
         
-        // 计算平均转发阅读比
+        // 计算平均转发率
         const totalShareRatio = data.reduce((sum, item) => sum + parseFloat(item.shareReadRatio || 0), 0);
         stats.avgShareRatio = (totalShareRatio / stats.totalArticles).toFixed(2);
     }
@@ -525,11 +542,11 @@ function calculateMonthlyStats(data) {
     if (stats.totalArticles > 0) {
         stats.avgRead = Math.round(stats.totalReads / stats.totalArticles);
         
-        // 计算本月平均赞阅比
+        // 计算本月平均点赞率
         const totalLikeRatio = monthlyData.reduce((sum, item) => sum + parseFloat(item.likeReadRatio || 0), 0);
         stats.avgLikeRatio = (totalLikeRatio / stats.totalArticles).toFixed(2);
         
-        // 计算本月平均转发阅读比
+        // 计算本月平均转发率
         const totalShareRatio = monthlyData.reduce((sum, item) => sum + parseFloat(item.shareReadRatio || 0), 0);
         stats.avgShareRatio = (totalShareRatio / stats.totalArticles).toFixed(2);
     }
@@ -754,7 +771,7 @@ async function exportData() {
 function convertToCSV(data) {
     const headers = [
         '标题', '类型', '发布时间', '阅读量', '点赞数', '评论数', '转发数',
-        '赞阅比(%)', '转阅比(%)', '推荐数', '推阅比(%)', '推送人数',
+        '点赞率(%)', '转发率(%)', '推荐数', '推阅比(%)', '推送人数',
         '成功推送', '失败推送', '是否全员推送', '状态', '失败原因',
         '赞赏金额', '划线数', '图片数量', '多图封面', '内容链接', '抓取时间'
     ];
@@ -956,6 +973,102 @@ async function updateStoredRecord(msgid, newData) {
         console.error('更新记录失败:', error);
         throw error;
     }
+}
+
+// 绑定排序事件
+function bindSortEvents() {
+    const sortableHeaders = document.querySelectorAll('.data-table th.sortable');
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', handleSort);
+    });
+}
+
+// 处理排序
+function handleSort(event) {
+    const header = event.currentTarget;
+    const column = header.dataset.sort;
+    
+    // 确定新的排序方向
+    let direction = 'asc';
+    if (currentSort.column === column) {
+        if (currentSort.direction === 'asc') {
+            direction = 'desc';
+        } else if (currentSort.direction === 'desc') {
+            // 如果当前是降序，再次点击则取消排序
+            direction = null;
+        }
+    }
+    
+    // 更新排序状态
+    currentSort.column = direction ? column : null;
+    currentSort.direction = direction;
+    
+    // 执行排序
+    if (direction) {
+        sortData(column, direction);
+    } else {
+        // 恢复原始顺序
+        currentData = [...originalData];
+    }
+    
+    // 重置到第一页
+    currentPage = 1;
+    
+    // 更新UI
+    updateSortIndicators();
+    renderTable();
+}
+
+// 排序数据
+function sortData(column, direction) {
+    currentData.sort((a, b) => {
+        let aValue = a[column];
+        let bValue = b[column];
+        
+        // 处理不同类型的数据
+        if (column === 'publishTimestamp') {
+            aValue = aValue || 0;
+            bValue = bValue || 0;
+        } else if (column.includes('Ratio')) {
+            // 处理百分比字段
+            aValue = parseFloat(aValue) || 0;
+            bValue = parseFloat(bValue) || 0;
+        } else if (typeof aValue === 'string' && !isNaN(aValue)) {
+            // 数字字符串转换为数字
+            aValue = parseFloat(aValue) || 0;
+            bValue = parseFloat(bValue) || 0;
+        }
+        
+        // 比较逻辑
+        if (aValue < bValue) {
+            return direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+            return direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+}
+
+// 更新排序指示器
+function updateSortIndicators() {
+    const sortableHeaders = document.querySelectorAll('.data-table th.sortable');
+    
+    sortableHeaders.forEach(header => {
+        const column = header.dataset.sort;
+        
+        // 移除所有排序类
+        header.classList.remove('sorted-asc', 'sorted-desc');
+        
+        // 添加当前排序类
+        if (currentSort.column === column) {
+            if (currentSort.direction === 'asc') {
+                header.classList.add('sorted-asc');
+            } else if (currentSort.direction === 'desc') {
+                header.classList.add('sorted-desc');
+            }
+        }
+    });
 }
 
 // 处理来自content script的消息
