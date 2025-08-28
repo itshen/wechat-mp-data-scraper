@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信数据抓取</title>
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="sidebar-container">
+        <!-- 简约头部 -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">微信数据抓取</h1>
+                <div class="status-indicator" id="statusIndicator">
+                    <svg class="status-icon" id="statusIcon" width="12" height="12" viewBox="0 0 12 12">
+                        <circle cx="6" cy="6" r="6" fill="#94a3b8"/>
+                    </svg>
+                    <span class="status-text" id="statusText">检测中...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 操作区域 -->
+            <section class="action-section">
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="captureBtn" disabled>
+                        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7,10 12,15 17,10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        抓取数据
+                    </button>
+                    
+                    <button class="btn btn-secondary" id="exportBtn" disabled>
+                        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                        导出CSV
+                    </button>
+                    
+                    <button class="btn btn-secondary" id="debugBtn">
+                        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="m12 1 0 6m6 5 6 0m-6 6 0 6m-6-5-6 0"/>
+                        </svg>
+                        调试数据
+                    </button>
+                </div>
+            </section>
+
+            <!-- 统计概览 -->
+            <section class="stats-section" id="statsSection" style="display: none;">
+                <h3 class="section-title">数据概览</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalArticles">0</div>
+                        <div class="stat-label">文章总数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalReads">0</div>
+                        <div class="stat-label">总阅读量</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalLikes">0</div>
+                        <div class="stat-label">总点赞数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avgRead">0</div>
+                        <div class="stat-label">平均阅读</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 数据表格 -->
+            <section class="table-section" id="tableSection" style="display: none;">
+                <div class="table-header">
+                    <h3 class="section-title">文章数据</h3>
+                    <div class="table-actions">
+                        <button class="btn-small" id="clearDataBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polyline points="3,6 5,6 21,6"/>
+                                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                            </svg>
+                            清空
+                        </button>
+                        <button class="btn-small" id="refreshBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polyline points="23,4 23,10 17,10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                            刷新
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table" id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>标题</th>
+                                <th>类型</th>
+                                <th>发布时间</th>
+                                <th>阅读量</th>
+                                <th>点赞数</th>
+                                <th>评论数</th>
+                                <th>转发数</th>
+                                <th>赞阅比</th>
+                                <th>转阅比</th>
+                                <th>推荐数</th>
+                                <th>推阅比</th>
+                                <th>推送人数</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 数据行将通过JS动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="table-pagination" id="tablePagination" style="display: none;">
+                    <div class="pagination-info">
+                        <span id="paginationInfo">显示 1-10 条，共 0 条记录</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn-small" id="prevPageBtn" disabled>上一页</button>
+                        <button class="btn-small" id="nextPageBtn" disabled>下一页</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 空状态 -->
+            <div class="empty-state" id="emptyState">
+                <svg class="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21,15 16,10 5,21"/>
+                </svg>
+                <h3 class="empty-title">暂无数据</h3>
+                <p class="empty-desc">请在微信公众号后台页面抓取数据</p>
+            </div>
+        </main>
+
+        <!-- 简约底部 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <span class="footer-text">数据存储在本地浏览器</span>
+                <span class="footer-version">v1.0</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="sidebar.js"></script>
+</body>
+</html>
