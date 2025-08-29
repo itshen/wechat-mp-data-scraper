@@ -14,6 +14,16 @@ const tableBody = document.getElementById('tableBody');
 const clearDataBtn = document.getElementById('clearDataBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 
+// 分页抓取相关元素
+const paginationCaptureBtn = document.getElementById('paginationCaptureBtn');
+const paginationBtnText = document.getElementById('paginationBtnText');
+const paginationProgress = document.getElementById('paginationProgress');
+const progressText = document.getElementById('progressText');
+const progressFill = document.getElementById('progressFill');
+const collectedCount = document.getElementById('collectedCount');
+const elapsedTime = document.getElementById('elapsedTime');
+const stopPaginationBtn = document.getElementById('stopPaginationBtn');
+
 // 统计元素
 const totalArticles = document.getElementById('totalArticles');
 const totalReads = document.getElementById('totalReads');
@@ -49,6 +59,16 @@ let originalData = []; // 保存原始数据顺序
 let currentPage = 1;
 const pageSize = 20;
 let currentTab = null;
+
+// 分页抓取状态
+let paginationState = {
+    isRunning: false,
+    startTime: null,
+    currentPage: 0,
+    totalPages: 0,
+    collectedCount: 0,
+    elapsedTimer: null
+};
 
 // 排序状态
 let currentSort = {
@@ -90,6 +110,10 @@ function bindEvents() {
         updateStatus('checking', '刷新检测...');
         checkPageStatus();
     });
+    
+    // 分页抓取事件
+    paginationCaptureBtn.addEventListener('click', handlePaginationCapture);
+    stopPaginationBtn.addEventListener('click', stopPaginationCapture);
     
     prevPageBtn.addEventListener('click', () => changePage(currentPage - 1));
     nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
@@ -144,6 +168,8 @@ async function checkPageStatus() {
     try {
         if (!currentTab || !currentTab.url.includes('mp.weixin.qq.com')) {
             updateStatus('error', '请在微信公众号后台使用');
+            captureBtn.disabled = true;
+            paginationCaptureBtn.disabled = true;
             return;
         }
 
@@ -152,14 +178,19 @@ async function checkPageStatus() {
         if (result && result.hasData) {
             updateStatus('ready', '准备就绪');
             captureBtn.disabled = false;
+            
+            // 检查分页状态
+            await checkPaginationAvailability();
         } else {
             updateStatus('error', '未检测到数据');
             captureBtn.disabled = true;
+            paginationCaptureBtn.disabled = true;
         }
     } catch (error) {
         console.error('检查页面状态失败:', error);
         updateStatus('error', '页面检查失败');
         captureBtn.disabled = true;
+        paginationCaptureBtn.disabled = true;
     }
 }
 
@@ -1071,9 +1102,250 @@ function updateSortIndicators() {
     });
 }
 
+// 检查分页可用性
+async function checkPaginationAvailability() {
+    try {
+        const result = await chrome.tabs.sendMessage(currentTab.id, { action: 'detectPagination' });
+        
+        if (result && result.success && result.pagination) {
+            const pagination = result.pagination;
+            
+            // 如果有分页或者检测到下一页，启用分页按钮
+            if (pagination.totalPages > 1 || pagination.hasNextPage) {
+                paginationCaptureBtn.disabled = false;
+                paginationBtnText.textContent = `抓取全部页面 (${pagination.totalPages}页)`;
+            } else {
+                paginationCaptureBtn.disabled = true;
+                paginationBtnText.textContent = '抓取全部页面 (仅1页)';
+            }
+        } else {
+            paginationCaptureBtn.disabled = true;
+            paginationBtnText.textContent = '抓取全部页面';
+        }
+    } catch (error) {
+        console.error('检查分页可用性失败:', error);
+        paginationCaptureBtn.disabled = true;
+        paginationBtnText.textContent = '抓取全部页面';
+    }
+}
+
+// 处理分页抓取
+async function handlePaginationCapture() {
+    if (paginationState.isRunning) {
+        return;
+    }
+    
+    try {
+        // 启动分页抓取
+        updateStatus('checking', '启动分页抓取...');
+        
+        // 增加超时处理
+        const result = await Promise.race([
+            chrome.tabs.sendMessage(currentTab.id, { action: 'startPaginationCapture' }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('启动超时')), 5000)
+            )
+        ]);
+        
+        if (result && result.success) {
+            startPaginationUI();
+            updateStatus('checking', '分页抓取已启动，正在执行中...');
+        } else {
+            throw new Error(result?.error || '启动分页抓取失败');
+        }
+        
+    } catch (error) {
+        console.error('分页抓取失败:', error);
+        let errorMessage = error.message;
+        
+        if (errorMessage.includes('message channel closed')) {
+            errorMessage = '连接已断开，请刷新页面后重试';
+        } else if (errorMessage.includes('Could not establish connection')) {
+            errorMessage = '无法连接到页面，请确保在微信公众号后台';
+        } else if (errorMessage.includes('启动超时')) {
+            errorMessage = '启动超时，请重试';
+        }
+        
+        updateStatus('error', '分页抓取失败: ' + errorMessage);
+        resetPaginationUI();
+    }
+}
+
+// 启动分页抓取UI
+function startPaginationUI() {
+    paginationState.isRunning = true;
+    paginationState.startTime = new Date();
+    paginationState.collectedCount = 0;
+    
+    // 更新UI状态
+    paginationCaptureBtn.disabled = true;
+    paginationCaptureBtn.classList.add('running');
+    paginationBtnText.textContent = '正在抓取...';
+    
+    // 显示进度条
+    paginationProgress.style.display = 'block';
+    progressText.textContent = '正在准备...';
+    progressFill.style.width = '0%';
+    collectedCount.textContent = '0';
+    elapsedTime.textContent = '0';
+    
+    // 启动计时器
+    startElapsedTimer();
+    
+    updateStatus('checking', '分页抓取进行中...');
+}
+
+// 停止分页抓取
+async function stopPaginationCapture() {
+    try {
+        const result = await chrome.tabs.sendMessage(currentTab.id, { action: 'stopPaginationCapture' });
+        
+        if (result && result.success) {
+            console.log('分页抓取已停止');
+            updateStatus('ready', '分页抓取已停止');
+            
+            // 如果有数据，保存它们
+            if (result.data && result.data.publish_list && result.data.publish_list.length > 0) {
+                await handlePaginationComplete(result.data);
+            } else {
+                resetPaginationUI();
+            }
+        }
+    } catch (error) {
+        console.error('停止分页抓取失败:', error);
+        resetPaginationUI();
+    }
+}
+
+// 重置分页抓取UI
+function resetPaginationUI() {
+    paginationState.isRunning = false;
+    
+    // 停止计时器
+    if (paginationState.elapsedTimer) {
+        clearInterval(paginationState.elapsedTimer);
+        paginationState.elapsedTimer = null;
+    }
+    
+    // 重置UI状态
+    paginationCaptureBtn.disabled = false;
+    paginationCaptureBtn.classList.remove('running');
+    paginationBtnText.textContent = '抓取全部页面';
+    
+    // 隐藏进度条
+    paginationProgress.style.display = 'none';
+    
+    // 重新检查分页可用性
+    checkPaginationAvailability();
+}
+
+// 启动计时器
+function startElapsedTimer() {
+    paginationState.elapsedTimer = setInterval(() => {
+        if (paginationState.startTime) {
+            const elapsed = Math.floor((new Date() - paginationState.startTime) / 1000);
+            elapsedTime.textContent = elapsed.toString();
+        }
+    }, 1000);
+}
+
+// 处理分页进度更新
+function handlePaginationProgress(progress) {
+    paginationState.currentPage = progress.currentPage;
+    paginationState.totalPages = progress.totalPages;
+    paginationState.collectedCount = progress.collectedCount;
+    
+    // 更新进度文本 - 根据不同状态显示不同信息
+    let statusText = '';
+    let statusClass = '';
+    
+    if (progress.isNavigating) {
+        statusText = progress.loadingMessage || `正在翻到第 ${progress.currentPage + 1} 页...`;
+        statusClass = 'navigating';
+    } else if (progress.isLoading) {
+        statusText = progress.loadingMessage || `等待第 ${progress.currentPage} 页数据加载...`;
+        statusClass = 'loading';
+    } else if (progress.hasError) {
+        statusText = progress.loadingMessage || `第 ${progress.currentPage} 页出现错误`;
+        statusClass = 'error';
+    } else {
+        statusText = `第 ${progress.currentPage}/${progress.totalPages} 页 - 当前页获取 ${progress.currentPageCount || 0} 条`;
+        statusClass = 'success';
+    }
+    
+    progressText.textContent = statusText;
+    progressText.className = `progress-status ${statusClass}`;
+    
+    // 更新进度条
+    const percentage = progress.totalPages > 0 ? Math.round((progress.currentPage / progress.totalPages) * 100) : 0;
+    progressFill.style.width = `${percentage}%`;
+    
+    // 根据状态设置进度条颜色
+    if (progress.hasError) {
+        progressFill.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+    } else if (progress.isLoading || progress.isNavigating) {
+        progressFill.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+    } else {
+        progressFill.style.background = 'linear-gradient(90deg, #3b82f6, #1d4ed8)';
+    }
+    
+    // 更新已获取数量
+    collectedCount.textContent = progress.collectedCount.toString();
+}
+
+// 处理分页抓取完成
+async function handlePaginationComplete(data) {
+    try {
+        console.log('分页抓取完成，处理数据...', data);
+        
+        // 处理抓取的数据
+        const processedData = processWeixinData(data);
+        
+        if (processedData.length > 0) {
+            await saveDataToStorage(processedData);
+            loadStoredData();
+            
+            const pages = data.pages_captured || paginationState.currentPage;
+            const duration = data.duration_seconds || Math.floor((new Date() - paginationState.startTime) / 1000);
+            
+            updateStatus('ready', `分页抓取完成！共 ${pages} 页，获取 ${processedData.length} 条数据，耗时 ${duration} 秒`);
+            exportBtn.disabled = false;
+        } else {
+            updateStatus('error', '分页抓取完成，但未找到有效数据');
+        }
+        
+    } catch (error) {
+        console.error('处理分页抓取数据失败:', error);
+        updateStatus('error', '处理数据失败: ' + error.message);
+    } finally {
+        resetPaginationUI();
+    }
+}
+
+// 处理分页抓取错误
+function handlePaginationError(error) {
+    console.error('分页抓取错误:', error);
+    updateStatus('error', '分页抓取失败: ' + error);
+    resetPaginationUI();
+}
+
 // 处理来自content script的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'dataUpdated') {
-        loadStoredData();
+    switch (request.action) {
+        case 'dataUpdated':
+            loadStoredData();
+            break;
+            
+        case 'paginationProgress':
+            handlePaginationProgress(request.progress);
+            break;
+            
+        case 'paginationComplete':
+            handlePaginationComplete(request.data);
+            break;
+            
+        case 'paginationError':
+            handlePaginationError(request.error);
+            break;
     }
 });

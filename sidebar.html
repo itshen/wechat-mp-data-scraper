@@ -32,7 +32,16 @@
                             <polyline points="7,10 12,15 17,10"/>
                             <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
-                        抓取数据
+                        抓取当前页
+                    </button>
+                    
+                    <button class="btn btn-primary pagination-btn" id="paginationCaptureBtn" disabled>
+                        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                            <circle cx="12" cy="8" r="2"/>
+                        </svg>
+                        <span id="paginationBtnText">抓取全部页面</span>
                     </button>
                     
                     <button class="btn btn-secondary" id="exportBtn" disabled>
@@ -45,6 +54,29 @@
                         </svg>
                         导出CSV
                     </button>
+                </div>
+                
+                <!-- 分页抓取进度条 -->
+                <div class="pagination-progress" id="paginationProgress" style="display: none;">
+                    <div class="progress-header">
+                        <span class="progress-title">正在抓取数据...</span>
+                        <button class="btn-stop" id="stopPaginationBtn">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+                            </svg>
+                            停止
+                        </button>
+                    </div>
+                    <div class="progress-info">
+                        <span id="progressText">准备中...</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span>已获取: <strong id="collectedCount">0</strong> 条数据</span>
+                        <span>用时: <strong id="elapsedTime">0</strong> 秒</span>
+                    </div>
                 </div>
             </section>
 
